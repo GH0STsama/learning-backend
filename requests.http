@@ -1,0 +1,49 @@
+@host=http://localhost:5000/
+
+
+### Create new user
+GET {{host}}create HTTP/1.1
+Content-Type: application/json
+
+{
+    "firstName": "ghost",
+    "lastName": "sama",
+    "email": "ghostsama@host.local",
+    "age": 0
+}
+
+
+### Read user info
+GET {{host}}read HTTP/1.1
+Content-Type: application/json
+
+{
+    "firstName": "ghost"
+}
+
+
+### Read the info of the all users
+GET {{host}}read-all HTTP/1.1
+
+
+### Update user info
+GET {{host}}update HTTP/1.1
+Content-Type: application/json
+
+{
+    "firstName": "ghost",
+
+    "new_firstName": "phantom",
+    "new_lastName": "sama",
+    "new_email": "ghostsama@host.local",
+    "new_age": 0
+}
+
+
+### Delete user info
+GET {{host}}delete HTTP/1.1
+Content-Type: application/json
+
+{
+    "firstName": "ghost"
+}
