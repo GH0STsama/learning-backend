@@ -1,97 +1,93 @@
-from flask import Flask, request
-import uuid
+from flask import Flask, request, jsonify
+import database.database as db
+from user import User, Roles, validate_email, validate_username
 
 app = Flask(__name__)
-database = {}
 
 
-@app.route("/create")
-def create():
-    """Create a field for the user in the database"""
+def contains_required_fields(fields: dict) -> bool:
+    """Verify that it contain the required fields"""
 
-    uid = uuid.uuid4()
-
-    database.update({
-        uid: {
-            "uid": uid,
-            "firstName": request.json["firstName"],
-            "lastName": request.json["lastName"],
-            "email": request.json["email"],
-            "age": request.json["age"]
-        }
-    })
-
-    return {"response": "inserted user"}
+    for key in ["username", "password", "firstName", "lastName", "email", "age"]:
+        if not key in fields.keys():
+            return False
+    return True
 
 
-@app.route("/read")
-def read():
-    """Read a user info in database"""
+@app.route("/", methods=["GET", "POST"])
+def create_or_readall():
+    """Create a field, or read the info of all users in the database"""
 
-    for uid in database.keys():
-        if request.json["firstName"] == database[uid]["firstName"]:
+    ####################################
+    # On post request, insert new user #
+    if request.method == "POST":
+        if not contains_required_fields(request.json):
+            return "", 400
 
-            return {
-                "uid": uid,
-                "firstName": database[uid]["firstName"],
-                "lastName": database[uid]["lastName"],
-                "email": database[uid]["email"],
-                "age": database[uid]["age"]
-            }
+        if not validate_username(request.json["username"]):
+            return "", 400
 
-    # If user not in database
-    return "", 404
+        if not validate_email(request.json["email"]):
+            return "", 400
 
+        user = User(
+            request.json["username"],
+            request.json["password"],
+            request.json["firstName"],
+            request.json["lastName"],
+            request.json["email"],
+            request.json["age"],
+            Roles.user
+        )
 
-@app.route("/read-all")
-def read_all():
-    """Read the info of the all user in database"""
+        try:
+            user = db.create_user(user)
+            return user.__dict__ if user else "", 400
 
-    users_info = []
-    for uid in database:
-        users_info.append({
-            "uid": uid,
-            "firstName": database[uid]["firstName"],
-            "lastName": database[uid]["lastName"],
-            "email": database[uid]["email"],
-            "age": database[uid]["age"]
-        })
+        except:
+            return "", 400
 
-    return {"users": users_info}
-
-
-@app.route("/update")
-def update():
-    """Update a user info in database"""
-
-    for uid in database:
-        if request.json["firstName"] == database[uid]["firstName"]:
-
-            # Update user info if exists
-            database[uid].update({
-                "uid": uid,
-                "firstName": request.json["new_firstName"],
-                "lastName": request.json["new_lastName"],
-                "email": request.json["new_email"],
-                "age": request.json["new_age"]
-            })
-
-            return {"response": "the info has been updated"}
-
-    # If user not in database
-    return "", 404
+    ################################################
+    # On get request, return the info of all users #
+    elif request.method == "GET":
+        return jsonify(db.read_all_users())
 
 
-@app.route("/delete")
-def delete():
-    """Delete all info of the user in database"""
+@app.route("/<username>", methods=["GET", "PUT", "DELETE"])
+def manage_user_info(username):
+    """Get, update, or delete, the info of the specific user in the database"""
 
-    for uid in database:
-        if request.json["firstName"] == database[uid]["firstName"]:
-            # Delete all info of this user
-            database.pop(uid)
+    ########################################
+    # On get request, return the user info #
+    if request.method == "GET":
+        user = db.read_user(username)
+        return user.__dict__ if user else "", 404
 
-            return {"response": "the info has been deleted"}
- 
-    # If user not in database
-    return "", 404
+    ########################################
+    # On put request, update the user info #
+    if request.method == "PUT":
+
+        try:
+            keys = request.json.keys()
+            user = User(
+                request.json["username"] if "username" in keys else None,
+                request.json["password"] if "password" in keys else None,
+                request.json["firstName"] if "firstName" in keys else None,
+                request.json["lastName"] if "lastName" in keys else None,
+                request.json["email"] if "email" in keys else None,
+                request.json["age"] if "age" in keys else None,
+                request.json["role"] if "role" in keys else None
+            )
+
+            updated = db.update_user(username, user)
+
+            return updated.__dict__ if updated else "", 400
+
+        except:
+            return "", 400
+
+    ##########################################
+    # On delete request, delete de user info #
+    if request.method == "DELETE":
+        deleted = db.delete_user(username)
+        return "User has been deleted" if deleted else "", 400
