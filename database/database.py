@@ -63,7 +63,8 @@ def update_user(username: str, update: User) -> User | None:
         if update.__dict__[key]:
             cursor.execute(f"UPDATE users SET {key} = '{update.__dict__[key]}' WHERE id = '{user[0][0]}'")
 
-    db.commit()
+    with lock:
+        db.commit()
 
     return read_user(username if not update.username else update.username)
 
@@ -75,7 +76,8 @@ def delete_user(username: str) -> bool:
         return False
 
     cursor.execute("DELETE FROM users WHERE username = '%s'" % (username))
-    db.commit()
+    with lock:
+        db.commit()
 
     return True
 
@@ -89,6 +91,9 @@ def read_all_users() -> list[dict]:
     users_list = []
 
     for user in users:
-        users_list.append(read_user(user[0]))
+        user = read_user(user[0])
+        user = user.__dict__
+        user.pop("password")
+        users_list.append(user)
 
     return users_list

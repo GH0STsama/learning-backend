@@ -16,7 +16,7 @@ class User:
     lastName: str
     email: str
     age: int
-    role: int
+    role: int = Roles.user
 
     def is_admin(self) -> bool:
         "Return true if the user is admin, else false"
